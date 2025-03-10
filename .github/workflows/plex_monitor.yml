@@ -30,4 +30,4 @@ jobs:
         PLEX_DISCORD_WEBHOOK: ${{ secrets.PLEX_DISCORD_WEBHOOK }}
         START_HOUR: ${{ secrets.START_HOUR }}
         END_HOUR: ${{ secrets.END_HOUR }}
-      run: python plex_web_monitor.py
+      run: python plex_monitor.py
