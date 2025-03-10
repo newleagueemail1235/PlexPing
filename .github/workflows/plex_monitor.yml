@@ -1,9 +1,9 @@
-name: Plex Web Interface Monitor
+name: Plex Browser Monitor
 
 on:
   schedule:
     # Run at random minutes each hour between 8:00-23:00 and 0:00-2:00
-    - cron: '37 8-23,0-2 * * *'
+    - cron: '17 8-23,0-2 * * *'
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
@@ -19,14 +19,23 @@ jobs:
       with:
         python-version: '3.9'
         
+    - name: Install Chrome
+      run: |
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+      
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests urllib3
+        pip install undetected-chromedriver selenium requests
         
-    - name: Run Plex Web check
+    - name: Run Plex Browser check
       env:
         PLEX_URL: ${{ secrets.PLEX_URL }}
+        PLEX_USERNAME: ${{ secrets.PLEX_USERNAME }}
+        PLEX_PASSWORD: ${{ secrets.PLEX_PASSWORD }}
         PLEX_DISCORD_WEBHOOK: ${{ secrets.PLEX_DISCORD_WEBHOOK }}
         START_HOUR: ${{ secrets.START_HOUR }}
         END_HOUR: ${{ secrets.END_HOUR }}
