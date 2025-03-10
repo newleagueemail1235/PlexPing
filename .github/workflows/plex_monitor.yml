@@ -22,10 +22,7 @@ jobs:
 
       - name: Run Plex Monitor
         env:
-          PLEX_USERNAME: ${{ secrets.PLEX_USERNAME }}
-          PLEX_PASSWORD: ${{ secrets.PLEX_PASSWORD }}
+          PLEX_API_TOKEN: ${{ secrets.PLEX_API_TOKEN }}
           PLEX_SERVER_NAME: ${{ secrets.PLEX_SERVER_NAME }}
           PLEX_DISCORD_WEBHOOK: ${{ secrets.PLEX_DISCORD_WEBHOOK }}
-          START_HOUR: ${{ secrets.START_HOUR }}
-          END_HOUR: ${{ secrets.END_HOUR }}
         run: python plex_monitor.py
