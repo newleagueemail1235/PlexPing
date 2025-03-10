@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Plex Server Monitor using MyPlex Account Authentication
+Plex Server Monitor using API Token Authentication
 
 This script checks if a Plex server is reachable and if random media is accessible
-by authenticating through a Plex.tv account rather than direct server access.
+by authenticating via API Token instead of a username/password.
 """
 
 import os
@@ -15,6 +15,10 @@ import json
 from datetime import datetime, timedelta
 from plexapi.myplex import MyPlexAccount
 from plexapi.exceptions import Unauthorized, NotFound, BadRequest
+import urllib3
+
+# Disable SSL warnings (for self-signed Plex certificates)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Set up logging
 logging.basicConfig(
@@ -31,24 +35,28 @@ class PlexMonitor:
         """
         Initialize the Plex monitor using environment variables.
         """
-        self.username = os.getenv("PLEX_USERNAME")
-        self.password = os.getenv("PLEX_PASSWORD")
+        self.api_token = os.getenv("PLEX_API_TOKEN")
         self.server_name = os.getenv("PLEX_SERVER_NAME")
         self.webhook_url = os.getenv("PLEX_DISCORD_WEBHOOK")
         self.start_hour = int(os.getenv("START_HOUR", 8))
         self.end_hour = int(os.getenv("END_HOUR", 2))
-        self.last_status = True  # Track the last known status
-        
+
+        if not self.api_token:
+            logging.error("Missing Plex API Token! Ensure PLEX_API_TOKEN is set in environment variables.")
+            raise ValueError("Missing Plex API Token.")
+
+        if not self.server_name:
+            logging.error("Missing Plex Server Name! Ensure PLEX_SERVER_NAME is set in environment variables.")
+            raise ValueError("Missing Plex Server Name.")
+
     def connect_to_server(self):
-        """Attempt to connect to the Plex server via Plex.tv account."""
+        """Attempt to connect to the Plex server using the API Token."""
         try:
-            # First, authenticate with Plex.tv
-            account = MyPlexAccount(self.username, self.password)
-            
-            # Then connect to the specified server
+            account = MyPlexAccount(token=self.api_token)
             server = account.resource(self.server_name).connect()
-            
+            logging.info(f"Connected to Plex server: {self.server_name}")
             return server
+
         except (requests.exceptions.ConnectionError, Unauthorized, BadRequest, NotFound) as e:
             logging.error(f"Failed to connect to Plex server: {e}")
             return None
@@ -59,27 +67,20 @@ class PlexMonitor:
             return None
             
         try:
-            # Get all libraries
             libraries = server.library.sections()
-            
-            # Filter for movie and show libraries based on requested type
             media_libraries = [lib for lib in libraries if lib.type in ('movie', 'show')]
-            
+
             if not media_libraries:
                 logging.warning(f"No libraries found for type: {media_type}")
                 return None
                 
-            # Pick a random library of the requested type
             random_library = random.choice(media_libraries)
-            
-            # Get all items from the library
             all_items = random_library.all()
-            
+
             if not all_items:
                 logging.warning(f"No items found in library: {random_library.title}")
                 return None
                 
-            # Pick a random item
             return random.choice(all_items)
             
         except Exception as e:
@@ -87,27 +88,20 @@ class PlexMonitor:
             return None
             
     def check_media_access(self, media_item):
-        """Check if we can access the media item's details."""
+        """Check if media item details are accessible."""
         if not media_item:
             return False
             
         try:
-            # Try to access media details
-            media_item.title
-
-            # For TV shows, try to get a random episode
+            media_item.title  # Access title
             if media_item.type == "show":
-                try:
-                    seasons = media_item.seasons()
-                    if seasons:
-                        episodes = seasons[0].episodes()
-                        if episodes:
-                            episodes[0].title  # Access an episode title
-                            return True
-                except Exception as e:
-                    logging.warning(f"Failed to access episode: {e}")
-                    return False
-            
+                seasons = media_item.seasons()
+                if seasons:
+                    episodes = seasons[0].episodes()
+                    if episodes:
+                        episodes[0].title  # Access an episode title
+                        return True
+
             return True
         except Exception as e:
             logging.error(f"Error checking media access: {e}")
@@ -167,7 +161,10 @@ class PlexMonitor:
         all_success = all(result["success"] for result in check_results)
 
         if not all_success:
-            error_messages = "\n".join([f"❌ {result['type'].capitalize()}: '{result.get('title', 'Unknown')}'" for result in check_results if not result["success"]])
+            error_messages = "\n".join(
+                [f"❌ {result['type'].capitalize()}: '{result.get('title', 'Unknown')}'"
+                 for result in check_results if not result["success"]]
+            )
             message = f"⚠️ **Plex Server Alert** ⚠️\nSome media failed to load:\n{error_messages}"
             logging.error("Some media access failed")
             self.send_discord_notification(message)
