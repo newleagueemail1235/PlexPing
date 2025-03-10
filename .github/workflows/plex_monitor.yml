@@ -2,7 +2,7 @@ name: Run Plex Monitor
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs once per hour
+    - cron: '0 * * * *'  # Runs every hour
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
@@ -15,19 +15,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Install dependencies
         run: pip install plexapi requests
 
-      - name: Run script
+      - name: Run Plex Monitor
         env:
-          PLEX_URL: ${{ secrets.PLEX_URL }}
           PLEX_USERNAME: ${{ secrets.PLEX_USERNAME }}
           PLEX_PASSWORD: ${{ secrets.PLEX_PASSWORD }}
           PLEX_SERVER_NAME: ${{ secrets.PLEX_SERVER_NAME }}
           PLEX_DISCORD_WEBHOOK: ${{ secrets.PLEX_DISCORD_WEBHOOK }}
           START_HOUR: ${{ secrets.START_HOUR }}
           END_HOUR: ${{ secrets.END_HOUR }}
-          HEADLESS: ${{ secrets.HEADLESS }}
         run: python plex_monitor.py
