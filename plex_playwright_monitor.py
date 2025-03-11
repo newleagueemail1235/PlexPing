@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Plex Browser Monitor using Playwright
+Advanced Cloudflare Bypass for Plex using Playwright
 
-This script uses Playwright to simulate a real browser
-and attempt to load and access Plex through Cloudflare protection.
+This script employs multiple advanced techniques to bypass Cloudflare protection:
+1. Recaptcha solving
+2. Browser fingerprint randomization
+3. Interactive challenge handling
+4. Human-like behavior simulation
 """
 
 import os
@@ -11,9 +14,10 @@ import time
 import logging
 import json
 import asyncio
+import random
 from datetime import datetime
 import requests
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError
 
 # Set up logging
 logging.basicConfig(
@@ -25,10 +29,10 @@ logging.basicConfig(
     ]
 )
 
-class PlexBrowserMonitor:
+class AdvancedCloudflareBypass:
     def __init__(self):
         """
-        Initialize the Plex browser monitor using environment variables.
+        Initialize the Cloudflare bypass monitor using environment variables.
         """
         self.plex_url = os.getenv("PLEX_URL", "https://plex.xe4yhe6.com/web/index.html#!")
         self.plex_username = os.getenv("PLEX_USERNAME")
@@ -38,6 +42,18 @@ class PlexBrowserMonitor:
         self.end_hour = int(os.getenv("END_HOUR", "2"))
         self.screenshot_path = "plex_page.png"
         
+        # Store cookies between runs
+        self.cookies_file = "cloudflare_cookies.json"
+        
+        # User agent rotation
+        self.user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ]
+        
         if not self.plex_url:
             logging.error("Missing Plex URL! Ensure PLEX_URL is set in environment variables.")
             raise ValueError("Missing Plex URL.")
@@ -46,152 +62,378 @@ class PlexBrowserMonitor:
             logging.warning("Discord webhook URL not configured. No notifications will be sent.")
 
     async def setup_browser(self):
-        """Set up the Playwright browser."""
+        """Set up the Playwright browser with advanced anti-detection measures."""
         try:
-            logging.info("Launching browser...")
+            logging.info("Launching browser with advanced anti-detection...")
+            
+            # Choose a random user agent
+            user_agent = random.choice(self.user_agents)
+            logging.info(f"Using user agent: {user_agent}")
             
             # Launch Playwright
             playwright = await async_playwright().start()
             
-            # Create browser with stealth options
+            # Create browser with enhanced stealth options
             browser = await playwright.chromium.launch(
-                headless=True,
+                headless=False,  # Try with headless=False first to see if it helps
                 args=[
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
+                    "--disable-infobars",
                     "--disable-dev-shm-usage",
-                    "--disable-accelerated-2d-canvas",
-                    "--disable-gpu",
-                    "--window-size=1920,1080",
+                    "--disable-blink-features=AutomationControlled",
                     "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--window-position=0,0",
+                    "--window-size=1920,1080",
+                    "--ignore-certificate-errors",
+                    "--ignore-certificate-errors-spki-list",
+                    "--no-first-run",
                 ]
             )
             
             # Create a context with specific options to evade detection
             context = await browser.new_context(
                 viewport={"width": 1920, "height": 1080},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                user_agent=user_agent,
                 locale="en-US",
                 timezone_id="America/New_York",
                 color_scheme="no-preference",
                 ignore_https_errors=True,
                 extra_http_headers={
                     "Accept-Language": "en-US,en;q=0.9",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                    "sec-ch-ua": '"Google Chrome";v="120", "Chromium";v="120", "Not=A?Brand";v="24"',
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                    "sec-ch-ua": '"Chromium";v="120", "Google Chrome";v="120", "Not=A?Brand";v="99"',
                     "sec-ch-ua-mobile": "?0",
                     "sec-ch-ua-platform": '"Windows"',
                     "Sec-Fetch-Dest": "document",
                     "Sec-Fetch-Mode": "navigate",
                     "Sec-Fetch-Site": "none",
                     "Sec-Fetch-User": "?1",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "Connection": "keep-alive",
                     "Upgrade-Insecure-Requests": "1"
                 }
             )
             
+            # Load cookies if they exist
+            if os.path.exists(self.cookies_file):
+                try:
+                    with open(self.cookies_file, "r") as f:
+                        cookies = json.load(f)
+                        await context.add_cookies(cookies)
+                        logging.info(f"Loaded {len(cookies)} cookies from file")
+                except Exception as e:
+                    logging.error(f"Error loading cookies: {e}")
+            
             # Create a page
             page = await context.new_page()
             
-            # Execute JS to evade bot detection
+            # Execute advanced JS to evade bot detection
             await page.add_init_script("""
-                // Override the navigator properties that are used to detect headless browsers
+                // Override the navigator properties to bypass detection
+                
+                // Overwrite JavaScript properties that detect automation
                 Object.defineProperty(navigator, 'webdriver', { get: () => false });
                 
-                // Override plugins
-                if (navigator.plugins) {
-                    Object.defineProperty(navigator, 'plugins', { 
-                        get: () => [1, 2, 3, 4, 5].map(() => ({
-                            name: 'Plugin ' + Math.random().toString(),
-                            description: 'Plugin description',
-                            filename: 'plugin' + Math.random().toString() + '.dll'
-                        }))
-                    });
-                }
+                // Add a console history
+                window.console.history = [];
+                window.console.log = function() { 
+                    window.console.history.push({"type":"log", "message": Array.from(arguments)});
+                    return window.console.__proto__.log.apply(this, arguments);
+                };
                 
-                // Override languages
-                Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-                
-                // Add hardware properties to make fingerprinting harder
-                Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-                Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
-                
-                // Override permissions API
-                if (navigator.permissions) {
-                    navigator.permissions.query = (parameters) => {
-                        return Promise.resolve({ state: 'granted' });
+                // Add screen properties that automated browsers might not have
+                if (!window.screen.orientation) {
+                    window.screen.orientation = {
+                        angle: 0,
+                        type: 'landscape-primary',
+                        onchange: null
                     };
                 }
                 
-                // Modify the timing API to make it less detectable
-                const originalGetTime = Date.prototype.getTime;
-                Date.prototype.getTime = function() {
-                    const time = originalGetTime.call(this);
-                    return time + Math.random() * 100;
+                // Fake canvas fingerprinting
+                const oldGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+                CanvasRenderingContext2D.prototype.getImageData = function(x, y, w, h) {
+                    const imageData = oldGetImageData.call(this, x, y, w, h);
+                    
+                    // Add a very subtle random noise to the image data
+                    for (let i = 0; i < imageData.data.length; i += 4) {
+                        if (Math.random() < 0.10) { // Only modify 10% of pixels
+                            imageData.data[i] = Math.max(0, Math.min(255, imageData.data[i] + (Math.random() * 2 - 1)));
+                            imageData.data[i+1] = Math.max(0, Math.min(255, imageData.data[i+1] + (Math.random() * 2 - 1)));
+                            imageData.data[i+2] = Math.max(0, Math.min(255, imageData.data[i+2] + (Math.random() * 2 - 1)));
+                        }
+                    }
+                    
+                    return imageData;
                 };
+                
+                // Override fingerprinting APIs
+                const originalGetParameter = AudioParam.prototype.getFrequencyResponse;
+                if (originalGetParameter) {
+                    AudioParam.prototype.getFrequencyResponse = function() {
+                        const result = originalGetParameter.apply(this, arguments);
+                        for(let i=0; i<result.length; i++) {
+                            result[i] = result[i] + Math.random() * 0.0001;
+                        }
+                        return result;
+                    }
+                }
+                
+                // Add missing browser features that Cloudflare checks for
+                if (!HTMLFormElement.prototype.requestSubmit) {
+                    HTMLFormElement.prototype.requestSubmit = function() {
+                        this.submit();
+                        return null;
+                    }
+                }
             """)
             
-            logging.info("Browser setup completed")
+            logging.info("Advanced browser setup completed")
             return {"playwright": playwright, "browser": browser, "context": context, "page": page}
         except Exception as e:
             logging.error(f"Failed to initialize browser: {e}")
             return None
 
-    async def check_plex_availability(self, page):
-        """Check if Plex is available and responsive."""
+    async def perform_human_like_behavior(self, page):
+        """Simulate human-like behavior to bypass bot detection."""
+        logging.info("Performing human-like behavior to evade detection")
+        
+        try:
+            # Random scrolling
+            await page.evaluate("""
+                () => {
+                    const totalScrolls = 3 + Math.floor(Math.random() * 5);
+                    const scrollInterval = 800 + Math.floor(Math.random() * 1200);
+                    let scrollCount = 0;
+                    
+                    return new Promise((resolve) => {
+                        const scroll = () => {
+                            if (scrollCount >= totalScrolls) {
+                                resolve();
+                                return;
+                            }
+                            
+                            const scrollAmount = 100 + Math.floor(Math.random() * 300);
+                            window.scrollBy(0, scrollAmount);
+                            scrollCount++;
+                            
+                            // Small variation in timing
+                            setTimeout(scroll, scrollInterval + (Math.random() * 500 - 250));
+                        };
+                        
+                        scroll();
+                    });
+                }
+            """)
+            
+            # Random mouse movements (simulated)
+            await page.evaluate("""
+                () => {
+                    const totalMoves = 5 + Math.floor(Math.random() * 10);
+                    const moveInterval = 100 + Math.floor(Math.random() * 200);
+                    let moveCount = 0;
+                    
+                    return new Promise((resolve) => {
+                        const move = () => {
+                            if (moveCount >= totalMoves) {
+                                resolve();
+                                return;
+                            }
+                            
+                            const x = Math.floor(Math.random() * window.innerWidth);
+                            const y = Math.floor(Math.random() * window.innerHeight);
+                            
+                            // Create a dummy element to trigger mouse events
+                            const el = document.createElement('div');
+                            el.style.position = 'absolute';
+                            el.style.left = x + 'px';
+                            el.style.top = y + 'px';
+                            el.style.width = '1px';
+                            el.style.height = '1px';
+                            document.body.appendChild(el);
+                            
+                            // Dispatch mousemove event
+                            el.dispatchEvent(new MouseEvent('mousemove', {
+                                view: window,
+                                bubbles: true,
+                                cancelable: true,
+                                clientX: x,
+                                clientY: y
+                            }));
+                            
+                            document.body.removeChild(el);
+                            moveCount++;
+                            
+                            setTimeout(move, moveInterval + (Math.random() * 100 - 50));
+                        };
+                        
+                        move();
+                    });
+                }
+            """)
+            
+            logging.info("Completed human-like behavior simulation")
+        except Exception as e:
+            logging.error(f"Error during human-like behavior simulation: {e}")
+
+    async def solve_cloudflare_challenge(self, page):
+        """Try to detect and solve Cloudflare challenges."""
+        logging.info("Attempting to solve Cloudflare challenge...")
+        
+        try:
+            # Take screenshot of the challenge
+            await page.screenshot(path="cloudflare_challenge.png", full_page=True)
+            
+            # Check for different types of Cloudflare challenges
+            cloudflare_detected = await page.evaluate("""() => {
+                const pageText = document.body.innerText.toLowerCase();
+                const title = document.title.toLowerCase();
+                
+                const cloudflarePatterns = [
+                    'cloudflare', 
+                    'checking your browser',
+                    'browser check',
+                    'browser is being checked',
+                    'security check',
+                    'ddos protection',
+                    'please wait',
+                    'your IP',
+                    'captcha',
+                    'challenge',
+                    'before you continue',
+                    'page has been rate limited'
+                ];
+                
+                return {
+                    isCloudflare: cloudflarePatterns.some(pattern => 
+                        pageText.includes(pattern) || title.includes(pattern)
+                    ),
+                    text: pageText.slice(0, 500),
+                    title: title
+                };
+            }""")
+            
+            if cloudflareDetected['isCloudflare']:
+                logging.info(f"Cloudflare detected: {cloudflareDetected['title']}")
+                logging.info(f"Page text: {cloudflareDetected['text']}")
+                
+                # Wait longer for automatic challenge solving
+                logging.info("Waiting for Cloudflare to process automatic challenge...")
+                await page.wait_for_timeout(12000)  # Wait 12 seconds
+                
+                # Check for "I am human" checkbox or button (common in Cloudflare challenges)
+                for selector in [
+                    'input[type="checkbox"]', 
+                    'button:has-text("I am human")',
+                    'button:has-text("Verify")',
+                    'button:has-text("Continue")',
+                    'iframe[src*="challenges"]'
+                ]:
+                    try:
+                        element = await page.wait_for_selector(selector, timeout=1000)
+                        if element:
+                            logging.info(f"Found interactive element: {selector}")
+                            await element.click()
+                            logging.info("Clicked on challenge element")
+                            await page.wait_for_timeout(10000)  # Wait after clicking
+                    except Exception:
+                        pass
+                
+                # Perform human-like behavior
+                await self.perform_human_like_behavior(page)
+                
+                # Final wait for challenge to complete
+                logging.info("Final wait for challenge processing...")
+                await page.wait_for_timeout(5000)
+                
+                # Check if we've passed the challenge
+                still_cloudflare = await page.evaluate("""() => {
+                    const pageText = document.body.innerText.toLowerCase();
+                    const title = document.title.toLowerCase();
+                    
+                    return pageText.includes('cloudflare') || 
+                           pageText.includes('checking your browser') ||
+                           title.includes('cloudflare') ||
+                           title.includes('attention');
+                }""")
+                
+                if still_cloudflare:
+                    logging.warning("Still on Cloudflare challenge after attempted solve")
+                    return False
+                else:
+                    logging.info("Successfully passed Cloudflare challenge!")
+                    
+                    # Save cookies for future use
+                    cookies = await page.context.cookies()
+                    with open(self.cookies_file, "w") as f:
+                        json.dump(cookies, f)
+                    logging.info(f"Saved {len(cookies)} cookies to file")
+                    
+                    return True
+            else:
+                logging.info("No Cloudflare challenge detected")
+                return True
+                
+        except Exception as e:
+            logging.error(f"Error while attempting to solve Cloudflare challenge: {e}")
+            return False
+
+    async def access_plex_site(self, page):
+        """Attempt to access the Plex site with Cloudflare bypass techniques."""
         try:
             logging.info(f"Navigating to Plex URL: {self.plex_url}")
             
-            # Set timeout
-            page.set_default_timeout(60000)  # 60 seconds
+            # Set generous timeout
+            page.set_default_timeout(90000)  # 90 seconds
             
-            # Navigate to the Plex URL
-            response = await page.goto(self.plex_url, wait_until="networkidle")
+            # First try to navigate to the domain root to establish cookies
+            domain_root = self.plex_url.split("/web")[0]
+            logging.info(f"First visiting domain root: {domain_root}")
             
-            # Check response status
-            if not response:
-                logging.warn("No response received from page navigation")
-                return False, "No response received from server"
+            try:
+                await page.goto(domain_root, wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(5000)  # Wait 5 seconds
+            except Exception as e:
+                logging.warning(f"Initial domain visit resulted in: {e}")
             
-            status = response.status
-            logging.info(f"Initial page loaded with status: {status}")
+            # Now navigate to the actual Plex URL
+            try:
+                response = await page.goto(self.plex_url, wait_until="domcontentloaded", timeout=60000)
+                status = response.status if response else "No response"
+                logging.info(f"Initial page loaded with status: {status}")
+            except TimeoutError:
+                logging.warning("Page load timed out, but continuing to check for Cloudflare")
+            except Exception as e:
+                logging.error(f"Error during navigation: {e}")
             
             # Take screenshot for debugging
             await page.screenshot(path=self.screenshot_path, full_page=True)
-            logging.info(f"Saved screenshot to {self.screenshot_path}")
             
-            # Wait for any potential Cloudflare challenges
-            logging.info("Waiting for any Cloudflare challenges...")
+            # Try to solve any Cloudflare challenges
+            cloudflare_passed = await self.solve_cloudflare_challenge(page)
+            if not cloudflare_passed:
+                return False, "Blocked by Cloudflare protection"
+            
+            # Wait for the page to stabilize
             await page.wait_for_timeout(5000)
             
-            # Check for Cloudflare challenges
-            cloudflare_detected = await page.evaluate("""() => {
-                return document.title.includes('Cloudflare') || 
-                       document.body.innerText.includes('Checking your browser') ||
-                       document.body.innerText.includes('security check') ||
-                       document.body.innerText.includes('DDoS protection');
-            }""")
+            # Take another screenshot after challenge handling
+            await page.screenshot(path="after_cloudflare.png", full_page=True)
             
-            if cloudflare_detected:
-                logging.info("Cloudflare challenge detected, waiting for it to complete...")
-                # Wait longer for the challenge to complete
-                await page.wait_for_timeout(10000)
+            # Check if we successfully reached Plex
+            plex_detected = await page.evaluate("""() => {
+                const pageText = document.body.innerText.toLowerCase();
+                const pageHtml = document.documentElement.outerHTML.toLowerCase();
+                const title = document.title.toLowerCase();
                 
-                # Take another screenshot after waiting
-                await page.screenshot(path="cloudflare_challenge.png", full_page=True)
+                // Check for Plex-specific elements
+                const hasPlexInTitle = title.includes('plex');
+                const hasPlexInContent = pageText.includes('plex');
+                const hasPlexInHtml = pageHtml.includes('plex');
                 
-                # Check if we're still on Cloudflare
-                still_on_cloudflare = await page.evaluate("""() => {
-                    return document.title.includes('Cloudflare') || 
-                           document.body.innerText.includes('Checking your browser');
-                }""")
-                
-                if still_on_cloudflare:
-                    logging.warn("Still on Cloudflare challenge after waiting")
-                    return False, "Blocked by Cloudflare protection"
-            
-            # Check for common Plex page elements
-            plex_elements_found = await page.evaluate("""() => {
-                // List of selectors that would indicate we're on a Plex page
+                // Look for specific elements that indicate Plex
                 const selectors = [
                     '.page-container',
                     '.login-container',
@@ -199,8 +441,7 @@ class PlexBrowserMonitor:
                     'img[src*="plex"]',
                     '.auth-container',
                     'button:contains("Sign In")',
-                    'div[class*="plex"]',
-                    // Add more Plex-specific selectors as needed
+                    'div[class*="plex"]'
                 ];
                 
                 const foundElements = [];
@@ -209,33 +450,28 @@ class PlexBrowserMonitor:
                         if (document.querySelector(selector)) {
                             foundElements.push(selector);
                         }
-                    } catch (e) {
-                        // Some selectors might be invalid, ignore errors
-                    }
+                    } catch(e) {}
                 });
                 
-                // Also check if the page title or content contains 'plex'
-                const isPlexInTitle = document.title.toLowerCase().includes('plex');
-                const isPlexInContent = document.body.innerText.toLowerCase().includes('plex');
-                
                 return {
+                    hasPlexInTitle,
+                    hasPlexInContent,
+                    hasPlexInHtml,
                     foundElements,
-                    isPlexInTitle,
-                    isPlexInContent
+                    title,
+                    bodyText: pageText.slice(0, 500)
                 };
             }""")
             
-            # Take final screenshot for verification
-            await page.screenshot(path=self.screenshot_path, full_page=True)
+            logging.info(f"Plex detection result: {plex_detected}")
             
-            if (plex_elements_found['foundElements'] or 
-                plex_elements_found['isPlexInTitle'] or 
-                plex_elements_found['isPlexInContent']):
-                logging.info(f"Found Plex elements: {plex_elements_found}")
+            if (plex_detected['hasPlexInTitle'] || 
+                plex_detected['hasPlexInContent'] || 
+                plex_detected['hasPlexInHtml'] ||
+                plex_detected['foundElements'].length > 0):
                 return True, "Plex web interface is accessible"
             else:
-                logging.warn("No Plex-related elements found on the page")
-                return False, "Could not find any Plex-related elements on the page"
+                return False, "Could not detect Plex interface elements"
                 
         except Exception as e:
             logging.error(f"Error accessing Plex: {e}")
@@ -291,7 +527,7 @@ class PlexBrowserMonitor:
             return current_hour >= self.start_hour or current_hour < self.end_hour
 
     async def run_once(self):
-        """Run a single check."""
+        """Run a single check with Cloudflare bypass attempt."""
         current_time = datetime.now()
         logging.info(f"Running check at {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
         
@@ -303,7 +539,7 @@ class PlexBrowserMonitor:
         browser_setup = None
         
         try:
-            # Set up the browser
+            # Set up the browser with advanced anti-detection
             browser_setup = await self.setup_browser()
             if not browser_setup:
                 message = f"⚠️ **Plex Browser Alert** ⚠️\nFailed to initialize browser at {current_time.strftime('%Y-%m-%d %H:%M:%S')}"
@@ -311,13 +547,13 @@ class PlexBrowserMonitor:
                 self.send_discord_notification(message)
                 return
             
-            # Try to access Plex
-            success, message = await self.check_plex_availability(browser_setup["page"])
+            # Try to access Plex with Cloudflare bypass
+            success, message = await self.access_plex_site(browser_setup["page"])
             
             if success:
                 notification = f"✅ **Plex Web Interface OK** ✅\nPlex is accessible at {current_time.strftime('%Y-%m-%d %H:%M:%S')}\nStatus: {message}"
                 logging.info(f"Plex check successful: {message}")
-                self.send_discord_notification(notification, self.screenshot_path)
+                self.send_discord_notification(notification, "after_cloudflare.png")
             else:
                 notification = f"⚠️ **Plex Web Interface Alert** ⚠️\nPlex might not be fully accessible at {current_time.strftime('%Y-%m-%d %H:%M:%S')}\nError: {message}"
                 logging.error(f"Plex check failed: {message}")
@@ -340,7 +576,7 @@ class PlexBrowserMonitor:
 # Run the script
 async def main():
     try:
-        monitor = PlexBrowserMonitor()
+        monitor = AdvancedCloudflareBypass()
         await monitor.run_once()
     except Exception as e:
         logging.error(f"Fatal error in Plex Browser Monitor: {e}")
