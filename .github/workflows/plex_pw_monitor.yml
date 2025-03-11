@@ -1,4 +1,4 @@
-name: Plex Playwright Monitor
+name: Plex Cloudflare Bypass Monitor
 on:
   schedule:
     # Run at random minutes each hour between 8:00-23:00 and 0:00-2:00
@@ -22,11 +22,22 @@ jobs:
         python -m pip install --upgrade pip
         pip install playwright requests
         
-    - name: Install Playwright browsers
+    - name: Install Playwright with dependencies
       run: |
-        python -m playwright install chromium
+        playwright install-deps chromium
+        playwright install chromium
         
-    - name: Run Plex Browser check
+    - name: Configure Playwright for CI
+      run: |
+        # Create a directory for storing cookies between runs
+        mkdir -p ~/.playwright-data
+        # Restore cookies if they exist
+        if [ -f ".playwright-cookies/cloudflare_cookies.json" ]; then
+          mkdir -p ~/.playwright-data
+          cp .playwright-cookies/cloudflare_cookies.json ~/.playwright-data/
+        fi
+        
+    - name: Run Plex Browser check with Xvfb
       env:
         PLEX_URL: ${{ secrets.PLEX_URL }}
         PLEX_USERNAME: ${{ secrets.PLEX_USERNAME }}
@@ -34,4 +45,28 @@ jobs:
         PLEX_DISCORD_WEBHOOK: ${{ secrets.PLEX_DISCORD_WEBHOOK }}
         START_HOUR: ${{ secrets.START_HOUR }}
         END_HOUR: ${{ secrets.END_HOUR }}
-      run: python plex_playwright_monitor.py
+        # Use display for non-headless mode
+        DISPLAY: ":99"
+      run: |
+        # Start Xvfb
+        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        # Run the monitor
+        python plex_advanced_cloudflare_bypass.py
+        
+    - name: Save cookies for future runs
+      if: always()  # Run this step even if previous steps fail
+      run: |
+        mkdir -p .playwright-cookies
+        if [ -f "cloudflare_cookies.json" ]; then
+          cp cloudflare_cookies.json .playwright-cookies/
+        fi
+        
+    - name: Upload screenshots
+      if: always()  # Run this step even if previous steps fail
+      uses: actions/upload-artifact@v2
+      with:
+        name: screenshots
+        path: |
+          plex_page.png
+          cloudflare_challenge.png
+          after_cloudflare.png
